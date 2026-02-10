@@ -1,0 +1,35 @@
+name: Build Typst PDF
+
+on:
+  push:
+    paths-ignore:
+      - 'notes.pdf'
+    paths:
+      - '**.typ'
+
+permissions:
+  contents: write
+
+jobs:
+  build_and_commit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Typst
+        uses: typst-community/setup-typst@v4
+
+      - name: Compile notes.typ
+        run: typst compile notes.typ
+
+      - name: Commit and Push PDF
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add notes.pdf
+          git commit -m "Render notes.pdf [skip ci]" || echo "No changes to commit"
+          
+          git push
