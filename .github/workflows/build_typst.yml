@@ -2,10 +2,9 @@ name: Build Typst PDF
 
 on:
   push:
-    paths-ignore:
-      - 'notes.pdf'
     paths:
       - '**.typ'
+      - '!notes.pdf'
 
 permissions:
   contents: write
