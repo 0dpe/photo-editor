@@ -1,11 +1,11 @@
-name: Build Typst SVG
+name: Build Typst PDF
 
 on:
   workflow_dispatch: 
   push:
     paths:
       - '**.typ'
-      - '!notes.svg'
+      - '!notes.pdf'
 
 permissions:
   contents: write
@@ -22,14 +22,14 @@ jobs:
         uses: typst-community/setup-typst@v4
 
       - name: Compile notes.typ
-        run: typst compile notes.typ --font-path ./typst_assets --format svg
+        run: typst compile notes.typ --font-path ./typst_assets
 
-      - name: Commit and Push SVG
+      - name: Commit and Push PDF
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          git add notes.svg
+          git add notes.pdf
           git commit -m "Render notes.typ [skip ci]" || echo "No changes to commit"
           
           git push
