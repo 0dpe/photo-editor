@@ -1,6 +1,7 @@
 name: Build Typst PDF
 
 on:
+  workflow_dispatch: 
   push:
     paths:
       - '**.typ'
