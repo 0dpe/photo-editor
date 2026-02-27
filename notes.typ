@@ -22,6 +22,16 @@
 
 #set par(spacing: 1.3em)
 
+#set enum(
+  body-indent: 0.6em,
+  indent: 1.0em,
+)
+
+#set list(
+  body-indent: 0.6em,
+  indent: 1.0em,
+)
+
 #set raw(theme: "/typst_assets/Cool Glow.tmTheme")
 
 
