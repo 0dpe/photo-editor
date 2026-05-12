@@ -103,7 +103,7 @@ impl winit::application::ApplicationHandler<State> for App {
                 .expect_universal("Event loop create_window failed"),
         );
         window.set_title("Photo Editor");
-        
+
         #[cfg(not(target_arch = "wasm32"))]
         {
             // use pollster async runtime/executor to await the future from State::new(window)
@@ -184,6 +184,10 @@ impl winit::application::ApplicationHandler<State> for App {
                     button,
                     ..
                 } => state.mouse_button_event(mouse_state, button),
+                winit::event::WindowEvent::MouseWheel { delta, .. } => state.scroll_event(&delta),
+                winit::event::WindowEvent::CursorMoved { position, .. } => {
+                    state.cursor_moved_event(position)
+                }
                 _ => {}
             }
         } // if self.state is not Some() but is None, nothing is done
