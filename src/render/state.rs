@@ -128,10 +128,10 @@ impl State {
             "Largest possible storage buffer binding size: {} MiB",
             supported_limits.max_storage_buffer_binding_size as f32 / 1024.0 / 1024.0
         );
-        // log::info!(
-        //     "Max texture dimension 2D: {}",
-        //     supported_limits.max_texture_dimension_2d
-        // );
+        log::info!(
+            "Max texture dimension 2D: {}",
+            supported_limits.max_texture_dimension_2d
+        );
         let (device, queue) = adapter
             .request_device(&wgpu::DeviceDescriptor {
                 label: Some("Device"),
@@ -140,6 +140,7 @@ impl State {
                     max_storage_buffer_binding_size: supported_limits
                         .max_storage_buffer_binding_size, // the default is 128 MiB, which is too small for millions of triangles
                     max_buffer_size: supported_limits.max_buffer_size,
+                    max_texture_dimension_2d: supported_limits.max_texture_dimension_2d,
                     ..wgpu::Limits::default()
                 },
                 experimental_features: unsafe { wgpu::ExperimentalFeatures::enabled() },
