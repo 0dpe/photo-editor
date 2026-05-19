@@ -21,6 +21,7 @@ pub struct PhotoEditorApp {
     cursor_pos: glam::Vec2,
     last_viewport_size: glam::Vec2,
     gpu_ready: bool,
+    initial_fit_done: bool,
 }
 
 impl PhotoEditorApp {
@@ -48,6 +49,7 @@ impl PhotoEditorApp {
             cursor_pos: glam::Vec2::ZERO,
             last_viewport_size: glam::Vec2::ONE,
             gpu_ready,
+            initial_fit_done: false,
         }
     }
 
@@ -104,6 +106,12 @@ impl PhotoEditorApp {
         }
 
         self.last_viewport_size = glam::Vec2::new(size.x, size.y);
+
+        // Reset view on first frame
+        if !self.initial_fit_done {
+            self.fit_image_to_screen();
+            self.initial_fit_done = true;
+        }
 
         let id = ui.id().with("image_viewport");
         let response = ui.interact(rect, id, egui::Sense::click_and_drag());

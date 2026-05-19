@@ -114,13 +114,13 @@ fn create_storage_bind_groups(
 fn load_image() -> image::RgbaImage {
     #[cfg(target_arch = "wasm32")]
     {
-        image::load_from_memory(include_bytes!("../../photo.jpg"))
+        image::load_from_memory(include_bytes!("../../photo_small.jpg"))
             .expect("Failed to decode embedded photo.jpg")
             .into_rgba8()
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        image::open("photo.jpg")
+        image::open("photo_small.jpg")
             .expect("Failed to load photo.jpg from project root")
             .into_rgba8()
     }
