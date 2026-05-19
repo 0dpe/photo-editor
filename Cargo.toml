@@ -11,21 +11,17 @@ name = "photo-editor-app"
 path = "src/main.rs"
 
 [dependencies]
-wgpu = "29.0.3"
-winit = "0.30.13"
+eframe = { version = "0.34", default-features = true }
+egui = "0.34"
 log = "0.4.29"
 bytemuck = { version = "1.25.0", features = ["derive"] }
 glam = { version = "0.32.1", features = ["bytemuck"] }
 image = "0.25.10"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-console_error_panic_hook = "0.1.7"
-console_log = "1.0.0"
 wasm-bindgen = "0.2.121"
 wasm-bindgen-futures = "0.4.71"
-web-sys = { version = "0.3.98", features = ["Response"] }
-js-sys = "0.3.98"
+web-sys = { version = "0.3.98", features = ["Document", "Element", "HtmlCanvasElement", "Window"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 env_logger = "0.11.10"
-pollster = "0.4.0"
