@@ -23,7 +23,6 @@ pub struct PhotoEditorApp {
     pixels_per_point: f32,
     gpu_ready: bool,
     initial_fit_done: bool,
-    last_drag_delta: egui::Vec2,
 }
 
 impl PhotoEditorApp {
@@ -53,7 +52,6 @@ impl PhotoEditorApp {
             pixels_per_point: 1.0,
             gpu_ready,
             initial_fit_done: false,
-            last_drag_delta: egui::Vec2::ZERO,
         }
     }
 
@@ -158,11 +156,8 @@ impl PhotoEditorApp {
         }
 
         if response.dragged() {
-            let delta = response.drag_delta() - self.last_drag_delta;
-            self.last_drag_delta = response.drag_delta();
+            let delta = response.drag_delta();
             self.config.pan += glam::Vec2::new(delta.x, delta.y) * self.pixels_per_point;
-        } else {
-            self.last_drag_delta = egui::Vec2::ZERO;
         }
 
         if self.gpu_ready {
