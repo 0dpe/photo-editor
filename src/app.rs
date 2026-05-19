@@ -20,8 +20,10 @@ pub struct PhotoEditorApp {
     config: Config,
     cursor_pos: glam::Vec2,
     last_viewport_size: glam::Vec2,
+    pixels_per_point: f32,
     gpu_ready: bool,
     initial_fit_done: bool,
+    last_drag_delta: egui::Vec2,
 }
 
 impl PhotoEditorApp {
@@ -48,13 +50,16 @@ impl PhotoEditorApp {
             config,
             cursor_pos: glam::Vec2::ZERO,
             last_viewport_size: glam::Vec2::ONE,
+            pixels_per_point: 1.0,
             gpu_ready,
             initial_fit_done: false,
+            last_drag_delta: egui::Vec2::ZERO,
         }
     }
 
     fn fit_image_to_screen(&mut self) {
-        self.config.fit_to_viewport(self.last_viewport_size);
+        self.config
+            .fit_to_viewport(self.last_viewport_size * self.pixels_per_point);
     }
 
     fn apply_scroll_zoom(&mut self, scroll_amount: f32, view_center: glam::Vec2) {
@@ -99,6 +104,18 @@ impl PhotoEditorApp {
             .max(SIDE_PANEL_MIN_WIDTH.min(viewport_width.max(1.0)))
     }
 
+    fn apply_zoom_delta(&mut self, zoom_delta: f32, view_center: glam::Vec2) {
+        if !zoom_delta.is_finite() || zoom_delta <= 0.0 {
+            return;
+        }
+        let old_zoom = self.config.zoom;
+        let new_zoom = (old_zoom * zoom_delta).clamp(0.01, 100.0);
+        let actual_zoom_ratio = new_zoom / old_zoom;
+        let mouse_offset = self.cursor_pos - view_center;
+        self.config.pan = mouse_offset - (mouse_offset - self.config.pan) * actual_zoom_ratio;
+        self.config.zoom = new_zoom;
+    }
+
     fn image_viewport(&mut self, ui: &mut egui::Ui, rect: egui::Rect) {
         let size = rect.size();
         if size.x < 1.0 || size.y < 1.0 {
@@ -106,6 +123,7 @@ impl PhotoEditorApp {
         }
 
         self.last_viewport_size = glam::Vec2::new(size.x, size.y);
+        self.pixels_per_point = ui.ctx().pixels_per_point().max(1.0);
 
         // Reset view on first frame
         if !self.initial_fit_done {
@@ -116,11 +134,13 @@ impl PhotoEditorApp {
         let id = ui.id().with("image_viewport");
         let response = ui.interact(rect, id, egui::Sense::click_and_drag());
 
-        if let Some(pos) = response.hover_pos() {
+        if let Some(pos) = response.hover_pos().or_else(|| response.interact_pointer_pos()) {
             self.cursor_pos = glam::Vec2::new(pos.x - rect.min.x, pos.y - rect.min.y);
+            self.cursor_pos *= self.pixels_per_point;
         }
 
-        let view_center = glam::Vec2::new(rect.width() * 0.5, rect.height() * 0.5);
+        let view_center =
+            glam::Vec2::new(rect.width() * 0.5, rect.height() * 0.5) * self.pixels_per_point;
 
         if response.hovered() {
             let scroll_amount = Self::scroll_amount_from_input(ui);
@@ -132,14 +152,24 @@ impl PhotoEditorApp {
             }
         }
 
+        let touch_zoom_delta = ui.input(|input| input.zoom_delta());
+        if response.hovered() && (touch_zoom_delta - 1.0).abs() > f32::EPSILON {
+            self.apply_zoom_delta(touch_zoom_delta, view_center);
+        }
+
         if response.dragged() {
-            let delta = response.drag_delta();
-            self.config.pan.x += delta.x;
-            self.config.pan.y += delta.y;
+            let delta = response.drag_delta() - self.last_drag_delta;
+            self.last_drag_delta = response.drag_delta();
+            self.config.pan += glam::Vec2::new(delta.x, delta.y) * self.pixels_per_point;
+        } else {
+            self.last_drag_delta = egui::Vec2::ZERO;
         }
 
         if self.gpu_ready {
-            let viewport_size = (size.x.round() as u32, size.y.round() as u32);
+            let viewport_size = (
+                (size.x * self.pixels_per_point).round().max(1.0) as u32,
+                (size.y * self.pixels_per_point).round().max(1.0) as u32,
+            );
             ui.painter().add(egui_wgpu::Callback::new_paint_callback(
                 rect,
                 ImagePaintCallback {
@@ -167,6 +197,7 @@ impl PhotoEditorApp {
 impl eframe::App for PhotoEditorApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let viewport = ui.max_rect();
+        self.pixels_per_point = ui.ctx().pixels_per_point().max(1.0);
 
         if !self.gpu_ready {
             ui.colored_label(

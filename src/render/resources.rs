@@ -35,8 +35,6 @@ impl Config {
 }
 
 pub struct ImageRenderResources {
-    sampler: wgpu::Sampler,
-
     compute_bind_group: wgpu::BindGroup,
     render_bind_group: wgpu::BindGroup,
 
@@ -55,7 +53,6 @@ pub struct ImageRenderResources {
 
 fn create_storage_bind_groups(
     device: &wgpu::Device,
-    sampler: &wgpu::Sampler,
     compute_bind_group_layout: &wgpu::BindGroupLayout,
     render_bind_group_layout: &wgpu::BindGroupLayout,
     texture_size: (u32, u32),
@@ -97,16 +94,10 @@ fn create_storage_bind_groups(
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Render bind group"),
             layout: render_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&storage_texture_view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(sampler),
-                },
-            ],
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(&storage_texture_view),
+            }],
         }),
     )
 }
@@ -131,17 +122,6 @@ impl ImageRenderResources {
         let device = &wgpu_render_state.device;
         let queue = &wgpu_render_state.queue;
         let target_format = wgpu_render_state.target_format;
-
-        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("Sampler"),
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Nearest,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
-            ..Default::default()
-        });
 
         let img = load_image();
         let dimensions = img.dimensions();
@@ -270,24 +250,16 @@ impl ImageRenderResources {
         let render_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("Render bind group layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            multisampled: false,
-                        },
-                        count: None,
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
                     },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                        count: None,
-                    },
-                ],
+                    count: None,
+                }],
             });
 
         let shader = device.create_shader_module(wgpu::include_wgsl!("shader.wgsl"));
@@ -353,14 +325,12 @@ impl ImageRenderResources {
         let viewport_size = (1, 1);
         let (compute_bind_group, render_bind_group) = create_storage_bind_groups(
             device,
-            &sampler,
             &compute_bind_group_layout,
             &render_bind_group_layout,
             viewport_size,
         );
 
         Self {
-            sampler,
             compute_bind_group,
             render_bind_group,
             compute_bind_group_layout,
@@ -386,7 +356,6 @@ impl ImageRenderResources {
         self.viewport_size = size;
         (self.compute_bind_group, self.render_bind_group) = create_storage_bind_groups(
             device,
-            &self.sampler,
             &self.compute_bind_group_layout,
             &self.render_bind_group_layout,
             size,

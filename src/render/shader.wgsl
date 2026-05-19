@@ -53,12 +53,13 @@ fn vs_main(@builtin(vertex_index) vert_index: u32) -> @builtin(position) vec4<f3
 }
 
 @group(0) @binding(0) var output_texture: texture_2d<f32>;
-@group(0) @binding(1) var tex_sampler: sampler;
 
 @fragment
 fn fs_main(@builtin(position) frag_position: vec4<f32>) -> @location(0) vec4<f32> {
-    let uv = frag_position.xy / vec2<f32>(textureDimensions(output_texture));
-    let color = textureSample(output_texture, tex_sampler, uv);
+    let dims_u = textureDimensions(output_texture);
+    let dims = vec2<i32>(dims_u);
+    let pixel = clamp(vec2<i32>(frag_position.xy), vec2<i32>(0, 0), dims - vec2<i32>(1, 1));
+    let color = textureLoad(output_texture, pixel, 0);
 
     // sRGB gamma conversion
     let srgb_color = select(
