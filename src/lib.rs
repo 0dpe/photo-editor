@@ -1,4 +1,7 @@
+mod adjust;
 mod app;
+mod dng;
+mod export;
 mod render;
 
 use app::PhotoEditorApp;

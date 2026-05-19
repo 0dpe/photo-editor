@@ -3,9 +3,10 @@
 struct Config {
     pan: vec2<f32>,
     zoom: f32,
-    _pad: u32,
+    brightness: f32,
     image_size: vec2<f32>,
-    _pad2: vec2<f32>,
+    saturation: f32,
+    _pad: f32,
 }
 
 @group(1) @binding(0) var image_texture: texture_2d<f32>;
@@ -37,9 +38,13 @@ fn compute_main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
 
     let uv = image_pos / config.image_size;
-    let color = textureSampleLevel(image_texture, image_sampler, uv, 0.0);
+    var color = textureSampleLevel(image_texture, image_sampler, uv, 0.0).rgb;
 
-    textureStore(screen, global_id.xy, color);
+    let exposed = color * config.brightness;
+    let luma = dot(exposed, vec3<f32>(0.2126, 0.7152, 0.0722));
+    color = mix(vec3<f32>(luma), exposed, config.saturation);
+
+    textureStore(screen, global_id.xy, vec4<f32>(color, 1.0));
 }
 
 @vertex

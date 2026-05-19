@@ -1,13 +1,17 @@
 use eframe::egui_wgpu::{self, wgpu};
+use image::RgbaImage;
+
+use crate::dng;
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Config {
     pub pan: glam::Vec2,
     pub zoom: f32,
-    pub _pad: u32,
+    pub brightness: f32,
     pub image_size: glam::Vec2,
-    pub _pad2: glam::Vec2,
+    pub saturation: f32,
+    pub _pad: f32,
 }
 
 impl Config {
@@ -15,9 +19,10 @@ impl Config {
         Self {
             pan: glam::Vec2::ZERO,
             zoom: 1.0,
-            _pad: 0,
+            brightness: 1.0,
             image_size,
-            _pad2: glam::Vec2::ZERO,
+            saturation: 1.0,
+            _pad: 0.0,
         }
     }
 
@@ -49,6 +54,7 @@ pub struct ImageRenderResources {
 
     viewport_size: (u32, u32),
     image_size: glam::Vec2,
+    source_rgba: RgbaImage,
 }
 
 fn create_storage_bind_groups(
@@ -102,19 +108,9 @@ fn create_storage_bind_groups(
     )
 }
 
-fn load_image() -> image::RgbaImage {
-    #[cfg(target_arch = "wasm32")]
-    {
-        image::load_from_memory(include_bytes!("../../photo_small.jpg"))
-            .expect("Failed to decode embedded photo.jpg")
-            .into_rgba8()
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        image::open("photo_small.jpg")
-            .expect("Failed to load photo.jpg from project root")
-            .into_rgba8()
-    }
+fn load_image() -> RgbaImage {
+    let bytes = dng::load_dng_bytes();
+    dng::decode_dng_to_rgba(&bytes)
 }
 
 impl ImageRenderResources {
@@ -123,7 +119,8 @@ impl ImageRenderResources {
         let queue = &wgpu_render_state.queue;
         let target_format = wgpu_render_state.target_format;
 
-        let img = load_image();
+        let source_rgba = load_image();
+        let img = &source_rgba;
         let dimensions = img.dimensions();
         let image_size = glam::Vec2::new(dimensions.0 as f32, dimensions.1 as f32);
 
@@ -341,11 +338,16 @@ impl ImageRenderResources {
             config_buffer,
             viewport_size,
             image_size,
+            source_rgba,
         }
     }
 
     pub fn image_size(&self) -> glam::Vec2 {
         self.image_size
+    }
+
+    pub fn source_rgba(&self) -> &RgbaImage {
+        &self.source_rgba
     }
 
     fn ensure_viewport_size(&mut self, device: &wgpu::Device, size: (u32, u32)) {

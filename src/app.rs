@@ -1,10 +1,11 @@
 use eframe::egui_wgpu;
 
+use crate::export;
 use crate::render::callback::ImagePaintCallback;
 use crate::render::resources::{Config, ImageRenderResources};
 
 /// Side panel width (clamped when the window is narrow).
-const SIDE_PANEL_WIDTH: f32 = 120.0;
+const SIDE_PANEL_WIDTH: f32 = 200.0;
 const SIDE_PANEL_MIN_WIDTH: f32 = 80.0;
 
 /// Matches the old winit handler: one wheel line ≈ `10.0 * 0.02` → 20% zoom step.
@@ -23,6 +24,7 @@ pub struct PhotoEditorApp {
     pixels_per_point: f32,
     gpu_ready: bool,
     initial_fit_done: bool,
+    export_status: Option<String>,
 }
 
 impl PhotoEditorApp {
@@ -52,6 +54,50 @@ impl PhotoEditorApp {
             pixels_per_point: 1.0,
             gpu_ready,
             initial_fit_done: false,
+            export_status: None,
+        }
+    }
+
+    fn export_jpg(&mut self, frame: &eframe::Frame) {
+        self.export_status = None;
+        let Some(wgpu) = frame.wgpu_render_state() else {
+            self.export_status = Some("GPU not available".to_string());
+            return;
+        };
+        let renderer = wgpu.renderer.read();
+        let resources = renderer
+            .callback_resources
+            .get::<ImageRenderResources>();
+        let Some(resources) = resources else {
+            self.export_status = Some("Image not loaded".to_string());
+            return;
+        };
+
+        match export::export_jpg(
+            resources.source_rgba(),
+            self.config.brightness,
+            self.config.saturation,
+        ) {
+            Ok(jpeg_bytes) => {
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    match export::save_jpg_to_disk(&jpeg_bytes, "exported.jpg") {
+                        Ok(()) => {
+                            self.export_status =
+                                Some("Saved exported.jpg in the working directory".to_string());
+                        }
+                        Err(e) => self.export_status = Some(e),
+                    }
+                }
+                #[cfg(target_arch = "wasm32")]
+                {
+                    match export::download_jpg(&jpeg_bytes, "exported.jpg") {
+                        Ok(()) => self.export_status = Some("Download started".to_string()),
+                        Err(e) => self.export_status = Some(e),
+                    }
+                }
+            }
+            Err(e) => self.export_status = Some(e),
         }
     }
 
@@ -175,7 +221,7 @@ impl PhotoEditorApp {
         }
     }
 
-    fn controls_panel(&mut self, ui: &mut egui::Ui) {
+    fn controls_panel(&mut self, ui: &mut egui::Ui, frame: &eframe::Frame) {
         ui.heading("View");
         ui.separator();
         if ui.button("Reset view").clicked() {
@@ -186,6 +232,46 @@ impl PhotoEditorApp {
         ui.add_space(8.0);
         ui.label("Drag to pan");
         ui.label("Scroll to zoom");
+
+        ui.add_space(12.0);
+        ui.heading("Adjust");
+        ui.separator();
+
+        ui.label("Brightness / exposure");
+        let mut brightness = self.config.brightness;
+        if ui
+            .add(
+                egui::Slider::new(&mut brightness, 0.1..=4.0)
+                    .logarithmic(true)
+                    .show_value(true),
+            )
+            .changed()
+        {
+            self.config.brightness = brightness;
+        }
+
+        ui.label("Saturation");
+        let mut saturation = self.config.saturation;
+        if ui
+            .add(
+                egui::Slider::new(&mut saturation, 0.0..=3.0)
+                    .logarithmic(true)
+                    .show_value(true),
+            )
+            .changed()
+        {
+            self.config.saturation = saturation;
+        }
+
+        ui.add_space(12.0);
+        ui.separator();
+        if ui.button("Export JPG").clicked() {
+            self.export_jpg(frame);
+        }
+        if let Some(status) = &self.export_status {
+            ui.add_space(4.0);
+            ui.label(status);
+        }
     }
 }
 
@@ -220,7 +306,7 @@ impl eframe::App for PhotoEditorApp {
                 .fill(egui::Color32::from_black_alpha(180))
                 .inner_margin(egui::Margin::symmetric(12, 10))
                 .show(ui, |ui| {
-                    self.controls_panel(ui);
+                    self.controls_panel(ui, _frame);
                 });
         });
     }
