@@ -1,0 +1,15 @@
+{
+  "name": "photo-editor",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "photo_editor_bg.wasm",
+    "photo_editor.js",
+    "photo_editor.d.ts"
+  ],
+  "main": "photo_editor.js",
+  "types": "photo_editor.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
